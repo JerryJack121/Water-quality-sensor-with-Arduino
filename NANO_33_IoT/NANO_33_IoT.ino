@@ -1,14 +1,17 @@
+
 #include <Arduino.h>
 #include "wiring_private.h"
-//#include "SoftwareSerial.h"
 
-unsigned char item[8] = {0x02, 0x03, 0x00, 0x00, 0x00, 0x01, 0x84, 0x39}; //16進位制測溫命令String data = ""; // 接收到的16進位制字串
-//SoftwareSerial pHSerial(8, 7);                                            // RX, TX
+
+// 設定虛擬序列埠
 Uart pHSerial (&sercom0, 5, 6, SERCOM_RX_PAD_1, UART_TX_PAD_0);
-int DE_RE = 3;
+int DE_RE = 3;  // 致能腳位
 
-float getpH(String pH); // 函數宣告
+// 函數宣告
+float getpH(String pH); 
+void command(unsigned char item[]);
 
+// 設定虛擬序列埠
 void SERCOM0_Handler()
 {
     pHSerial.IrqHandler();
@@ -22,68 +25,113 @@ void setup()
     Serial.begin(9600);
     pHSerial.begin(9600);
     pinMode(DE_RE, OUTPUT);
-    //  digitalWrite(DE_RE,LOW);
+    //  digitalWrite(DE_RE,LOW);    
+    while (!Serial) ; // 等待序列埠連線
+    Serial.println("序列埠連線完成");
 }
 void loop()
 {
+  // 命令字串
+  unsigned char item1[] = {0x01, 0x04, 0x00, 0x00, 0x00, 0x02, 0x71, 0xCB};
+  unsigned char item2[] = {0x02, 0x04, 0x00, 0x00, 0x00, 0x02, 0x71, 0xF8};
+  unsigned char item3[] = {0x03, 0x04, 0x00, 0x00, 0x00, 0x02, 0x70, 0x29};
+  unsigned char item4[] = {0x04, 0x04, 0x00, 0x00, 0x00, 0x02, 0x71, 0x9E};
+
+  Serial.println("PH值");
+  command(item1);
   delay(2000);
-  Serial.println("開始執行");
-    String data = "";
+  Serial.println("鹽度CON");
+  command(item2);
+  delay(2000);
+  Serial.println("DO溶氧量");
+  command(item3);
+  delay(2000);
+  Serial.println("ORP電極");
+  command(item4);
+  delay(2000);
+}
+
+// 傳送指令給感測器，並呼叫getdata解讀回傳值
+void command(unsigned char item[]){
+    String ans = "";
+    unsigned long runTime1, runTime2;
+    int count = 0;
+    
+    //高電位-寫入模式
     digitalWrite(DE_RE, HIGH);
-//    pHSerial.write(item[0]); // write輸出
-//     delay(10) ;
-//    pHSerial.write(item[1]); // write輸出
-//    delay(10) ;
+    Serial.println("寫入模式");
+
+    // 傳送測溫命令
     for (int i = 0; i < 8; i++)
-    {   
-                              // 傳送測溫命令
-        pHSerial.write(item[i]); // write輸出
+    {                     
+        pHSerial.write(item[i]); // 依序寫入指令
         Serial.print(item[i], HEX);
         delay(10) ;
     }
     Serial.println();
-    Serial.println("寫入");
+    
+    //高電位-讀取模式
     digitalWrite(DE_RE, LOW);
-    Serial.println("讀取資料");
-    while (pHSerial.available()) //從串列埠中讀取資料
-    {
-        Serial.println("讀到值了!");
-        unsigned char in = (unsigned char)pHSerial.read(); // read讀取
-        Serial.print(in, HEX);
-        Serial.print(",");
-        data += in;
-        data += ',';
+    Serial.println("讀取模式");
+   
+     runTime1 = millis();      //讀取 Arduino 板執行時間
+     
+  // 等待感測器回應，若太久沒有回應則退出
+    while(!pHSerial.available()){
+      runTime2 = millis();
+//      Serial.println(runTime2-runTime1);
+      if((runTime2-runTime1)>= 3000)
+        break;
     }
-    Serial.println();
-    Serial.print("鹽度:");
-    Serial.println(data);
-//    Serial.println(getpH(data));
+    // 讀取感測器回傳指令
+    while (pHSerial.available()) 
+    { 
+        count += 1;
+        unsigned char in = (unsigned char)pHSerial.read(); 
+        Serial.print(in, HEX);
+        ans += in;
+        ans += ',';
+        delay(10);
+    }
+    
+    // 判斷感測器是否有回應   
+    if (count != 0){
+      if (count!=(5+2*(int(item[5])))) // 若回傳長度不對，則回傳錯誤
+        Serial.println("回傳錯誤");
+      else{
+            Serial.println();
+            Serial.println("\n解讀數值");
+           float info = getdata(ans);
+            Serial.println(info);
+          }
+    }
+    else
+      Serial.println("感測器無回應");
+      
     Serial.println("---------------");
-}
+  }
 
-//解讀
-float getpH(String pH)
+//解讀回傳指令
+float getdata(String ans)
 {
-    int commaPosition = -1;
+    int commaPosition;
     String info[9]; // 用字串陣列儲存
-    Serial.println(pH);
     for (int i = 0; i < 11; i++)
     {
-        commaPosition = pH.indexOf(',');
+        commaPosition = ans.indexOf(','); // 尋找字串中逗號的位置
         if (commaPosition != -1)
         {
-            info[i] = pH.substring(0, commaPosition);
-
-            pH = pH.substring(commaPosition + 1, pH.length());
-        }
-        else
-        {
-            if (pH.length() > 0)
-            { // 最後一個會執行這個
-                info[i] = pH.substring(0, commaPosition);
-            }
+            info[i] = ans.substring(0, commaPosition);
+            ans = ans.substring(commaPosition + 1, ans.length());
         }
     }
-
-    return (info[3].toInt() * 256 + info[4].toInt() * 16);
+    if (info[2].toInt() == 2)
+      return (info[3].toInt() * 256 + info[4].toInt() * 16);
+    else if (info[2].toInt() == 4){
+      Serial.print("小數點位數:");
+      Serial.println(info[5].toInt());
+      Serial.print("單位代號:");
+      Serial.println(info[6].toInt());
+      return ((info[3].toInt() * 256 + info[4].toInt())/pow(10, info[5].toInt()));
+      }
 }
