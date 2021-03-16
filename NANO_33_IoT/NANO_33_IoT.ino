@@ -130,7 +130,7 @@ float getdata(String ans)
       Serial.print("小數點位數:");
       Serial.println(info[5].toInt());
       Serial.print("單位代號:");
-      Serial.println(info[6].toInt());
+      Serial.println(info[6].toInt(),HEX);
       return ((info[3].toInt() * 256 + info[4].toInt())/pow(10, info[5].toInt()));
       }
 }
