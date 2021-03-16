@@ -35,7 +35,7 @@ void loop()
   unsigned char item1[] = {0x01, 0x04, 0x00, 0x00, 0x00, 0x02, 0x71, 0xCB};
   unsigned char item2[] = {0x02, 0x04, 0x00, 0x00, 0x00, 0x02, 0x71, 0xF8};
   unsigned char item3[] = {0x03, 0x04, 0x00, 0x00, 0x00, 0x02, 0x70, 0x29};
-  unsigned char item4[] = {0x04, 0x04, 0x00, 0x00, 0x00, 0x02, 0x71, 0x9E};
+  unsigned char item4[] = {0x04, 0x04, 0x00, 0x06, 0x00, 0x02, 0x91, 0x9F};
 
   Serial.println("PH值");
   command(item1);
@@ -88,19 +88,18 @@ void command(unsigned char item[]){
     { 
         count += 1;
         unsigned char in = (unsigned char)pHSerial.read(); 
-        Serial.print(in, HEX);
+//        Serial.print(in, HEX);
         ans += in;
         ans += ',';
         delay(10);
     }
-    
+    Serial.println(ans);
     // 判斷感測器是否有回應   
     if (count != 0){
       if (count!=(5+2*(int(item[5])))) // 若回傳長度不對，則回傳錯誤
         Serial.println("回傳錯誤");
       else{
-            Serial.println();
-            Serial.println("\n解讀數值");
+            Serial.println("解讀數值");
            float info = getdata(ans);
             Serial.println(info);
           }
