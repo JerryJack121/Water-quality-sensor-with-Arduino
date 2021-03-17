@@ -78,23 +78,24 @@ void loop() {
 
   float ph, con, do_, orp;
   
-  Serial.println("PH值");
+  Serial.println("\nPH值");
   ph = command(item1);
   delay(2000);
   
-  Serial.println("鹽度CON");
+  Serial.println("\n鹽度CON");
   con = command(item2);
   delay(2000);
-  Serial.println("DO溶氧量");
+  Serial.println("\nDO溶氧量");
   do_ = command(item3);
   delay(2000);
-  Serial.println("ORP電極");
+  Serial.println("\nORP電極");
   orp = command(item4);
   delay(2000);
 
 //  連線到server
   Serial.print("Connecting to "); 
-  Serial.print(server);
+  Serial.println(server);
+  
   WiFiClient client;
 // 使用 80 Port 連線
   if (client.connect(server, 80)) {
@@ -105,7 +106,11 @@ void loop() {
     return;
   }
 // 上傳thingspeak
-  client.print(String("GET ") + resource + apiKey + "&field1=" + ph + "&field2=" + con + "&field3=" + do_ + "&field4=" + orp +
+  client.print(String("GET ") + resource + apiKey +
+                "&field1=" + ph + 
+                "&field2=" + con +
+                "&field3=" + do_ +
+                "&field4=" + orp +
                   " HTTP/1.1\r\n" +
                   "Host: " + server + "\r\n" + 
                   "Connection: close\r\n\r\n");
@@ -120,7 +125,7 @@ float command(unsigned char item[]){
     unsigned long runTime1, runTime2;
     int count = 0;
     
-    Serial.println("---------------");
+//    Serial.println("---------------");
     //高電位-寫入模式
     digitalWrite(DE_RE, HIGH);
     Serial.println("寫入模式");
