@@ -38,7 +38,7 @@ void setup() {
   pHSerial.begin(9600);
   pinMode(DE_RE, OUTPUT);
   //  digitalWrite(DE_RE,LOW);    
-  while (!Serial) ; // 等待序列埠連線
+//  while (!Serial) ; // 等待序列埠連線
   Serial.println("序列埠連線完成");
 
   Serial.println();
@@ -114,8 +114,10 @@ void loop() {
                   " HTTP/1.1\r\n" +
                   "Host: " + server + "\r\n" + 
                   "Connection: close\r\n\r\n");
-  delay(15000); // thingspeak每筆資料間隔至少15秒
   
+  delay(15000); // thingspeak每筆資料間隔至少15秒
+  client.flush();   // No Socket available
+  client.stop();
   }
 
 
@@ -125,10 +127,10 @@ float command(unsigned char item[]){
     unsigned long runTime1, runTime2;
     int count = 0;
     
-//    Serial.println("---------------");
+    Serial.println("---------------");
     //高電位-寫入模式
     digitalWrite(DE_RE, HIGH);
-    Serial.println("寫入模式");
+    Serial.println("寫入");
 
     // 傳送測溫命令
     for (int i = 0; i < 8; i++)
@@ -141,7 +143,7 @@ float command(unsigned char item[]){
     
     //高電位-讀取模式
     digitalWrite(DE_RE, LOW);
-    Serial.println("讀取模式");
+    Serial.println("讀取");
    
      runTime1 = millis();      //讀取 Arduino 板執行時間
      
@@ -149,7 +151,6 @@ float command(unsigned char item[]){
     while(!pHSerial.available())
     {
       runTime2 = millis();
-//      Serial.println(runTime2-runTime1);
       if((runTime2-runTime1)>= 3000)
         break;
     }
@@ -161,7 +162,7 @@ float command(unsigned char item[]){
 //        Serial.print(in, HEX);
         ans += in;
         ans += ',';
-        delay(10);
+        delay(100);
     }
     Serial.println(ans);
     // 判斷感測器是否有回應   
@@ -169,10 +170,10 @@ float command(unsigned char item[]){
       if (count!=(5+2*(int(item[5])))) // 若回傳長度不對，則回傳錯誤
       {
         Serial.println("回傳長度錯誤");
-        return -1.0;
+        return command(item);
       }
       else{
-            Serial.println("解讀數值");
+//            Serial.println("解讀數值");
            float info = getdata(ans);
             Serial.println(info);
             return info;
@@ -181,7 +182,8 @@ float command(unsigned char item[]){
     else
     {
       Serial.println("感測器無回應");
-      return -1.0;
+//      return -1.0;
+      return command(item);
     }
     
   }
